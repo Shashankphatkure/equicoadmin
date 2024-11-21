@@ -78,6 +78,8 @@ const AdminDashboard = () => {
         return <PostManagement />;
       case "settings":
         return <SettingsPage />;
+      case "profile":
+        return <ProfilePage />;
       default:
         return null;
     }
@@ -132,11 +134,9 @@ const AdminDashboard = () => {
                 </div>
                 <div className="flex flex-col items-start">
                   <span className="text-sm font-medium text-gray-700">
-                    Admin
+                    {user?.user_metadata?.full_name || "User"}
                   </span>
-                  <span className="text-xs text-gray-500">
-                    admin@example.com
-                  </span>
+                  <span className="text-xs text-gray-500">{user?.email}</span>
                 </div>
                 <ChevronDownIcon className="w-4 h-4 text-gray-500" />
               </button>
@@ -146,7 +146,7 @@ const AdminDashboard = () => {
               >
                 <div className="px-4 py-2 border-b">
                   <p className="text-sm font-medium">Signed in as</p>
-                  <p className="text-sm text-gray-500">admin@example.com</p>
+                  <p className="text-sm text-gray-500">{user?.email}</p>
                 </div>
                 <button
                   onClick={() => {
