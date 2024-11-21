@@ -8,6 +8,8 @@ import {
   UsersIcon,
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
+  DocumentTextIcon,
+  ShoppingCartIcon,
 } from "@heroicons/react/24/outline";
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
@@ -18,6 +20,8 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     { id: "horses", label: "Horses", icon: UsersIcon },
     { id: "events", label: "Events", icon: CalendarIcon },
     { id: "products", label: "Products", icon: ShoppingBagIcon },
+    { id: "orders", label: "Orders", icon: ShoppingCartIcon },
+    { id: "posts", label: "Posts", icon: DocumentTextIcon },
     { id: "sellers", label: "Sellers", icon: UsersIcon },
     { id: "notifications", label: "Notifications", icon: BellIcon },
   ];
