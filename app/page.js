@@ -1,5 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useRouter } from "next/navigation";
 import UserManagement from "./components/UserManagement";
 import HorseManagement from "./components/HorseManagement";
 import EventManagement from "./components/EventManagement";
@@ -24,6 +26,38 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("users");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const router = useRouter();
+  const supabase = createClientComponentClient();
+
+  useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setUser(user);
+      if (!user) {
+        router.push("/login");
+      }
+    };
+
+    getUser();
+  }, [router, supabase]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
+
+  const profileDropdownSignOut = (
+    <button
+      onClick={handleSignOut}
+      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center text-red-600"
+    >
+      <ArrowRightOnRectangleIcon className="w-4 h-4 mr-2" />
+      Sign Out
+    </button>
+  );
 
   const renderContent = () => {
     switch (activeTab) {
@@ -127,10 +161,7 @@ const AdminDashboard = () => {
                   <UserIcon className="w-4 h-4 mr-2" />
                   Your Profile
                 </button>
-                <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center text-red-600">
-                  <ArrowRightOnRectangleIcon className="w-4 h-4 mr-2" />
-                  Sign Out
-                </button>
+                {profileDropdownSignOut}
               </Dropdown>
             </div>
           </div>
