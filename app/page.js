@@ -6,6 +6,8 @@ import EventManagement from "./components/EventManagement";
 import ProductManagement from "./components/ProductManagement";
 import SellerManagement from "./components/SellerManagement";
 import NotificationManagement from "./components/NotificationManagement";
+import OrderManagement from "./components/OrderManagement";
+import PostManagement from "./components/PostManagement";
 import Sidebar from "./components/ui/Sidebar";
 import Dropdown from "./components/ui/Dropdown";
 import {
@@ -37,6 +39,10 @@ const AdminDashboard = () => {
         return <SellerManagement />;
       case "notifications":
         return <NotificationManagement />;
+      case "orders":
+        return <OrderManagement />;
+      case "posts":
+        return <PostManagement />;
       case "settings":
         return <SettingsPage />;
       case "profile":

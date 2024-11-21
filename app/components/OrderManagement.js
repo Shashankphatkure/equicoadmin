@@ -19,9 +19,13 @@ const OrderManagement = () => {
 
   const fetchOrders = async () => {
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from("orders")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -37,29 +41,40 @@ const OrderManagement = () => {
     e.preventDefault();
     const formData = new FormData(e.target);
 
-    const orderData = {
-      customer_name: formData.get("customer_name"),
-      email: formData.get("email"),
-      status: formData.get("status"),
-      total_amount: parseFloat(formData.get("total_amount")),
-      payment_status: formData.get("payment_status"),
-      shipping_address: {
-        street: formData.get("street"),
-        city: formData.get("city"),
-        state: formData.get("state"),
-        postal_code: formData.get("postal_code"),
-        country: formData.get("country"),
-      },
-      items: [],
-      notes: formData.get("notes"),
-    };
-
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const orderData = {
+        user_id: user.id,
+        status: formData.get("status"),
+        shipping_address: {
+          street: formData.get("street"),
+          city: formData.get("city"),
+          state: formData.get("state"),
+          postal_code: formData.get("postal_code"),
+          country: formData.get("country"),
+        },
+        shipping_method: {
+          carrier: formData.get("shipping_carrier"),
+          method: formData.get("shipping_method"),
+          tracking_number: formData.get("tracking_number"),
+        },
+        payment_method: formData.get("payment_method"),
+        items: [], // This should be populated with actual order items
+        subtotal: parseFloat(formData.get("subtotal")),
+        shipping_cost: parseFloat(formData.get("shipping_cost")),
+        tax: parseFloat(formData.get("tax")),
+        total: parseFloat(formData.get("total")),
+      };
+
       if (editingOrder) {
         const { error } = await supabase
           .from("orders")
           .update(orderData)
-          .eq("id", editingOrder.id);
+          .eq("id", editingOrder.id)
+          .eq("user_id", user.id); // Security check
 
         if (error) throw error;
         toast.success("Order updated successfully");
@@ -75,7 +90,9 @@ const OrderManagement = () => {
       setEditingOrder(null);
     } catch (error) {
       toast.error(
-        editingOrder ? "Error updating order" : "Error creating order"
+        `Error ${editingOrder ? "updating" : "creating"} order: ${
+          error.message
+        }`
       );
     }
   };
@@ -84,14 +101,18 @@ const OrderManagement = () => {
     if (!confirm("Are you sure you want to delete this order?")) return;
 
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const { error } = await supabase
         .from("orders")
         .delete()
-        .eq("id", orderId);
+        .eq("id", orderId)
+        .eq("user_id", user.id); // Security check
 
       if (error) throw error;
       toast.success("Order deleted successfully");
-      fetchOrders();
+      setOrders(orders.filter((order) => order.id !== orderId));
     } catch (error) {
       toast.error("Error deleting order: " + error.message);
     }
@@ -290,92 +311,164 @@ const OrderManagement = () => {
         title={editingOrder ? "Edit Order" : "Add New Order"}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Customer Name
-              </label>
-              <input
-                name="customer_name"
-                type="text"
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                defaultValue={editingOrder?.customer_name}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <input
-                name="email"
-                type="email"
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                defaultValue={editingOrder?.email}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                name="status"
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                defaultValue={editingOrder?.status || "pending"}
-                required
-              >
-                <option value="pending">Pending</option>
-                <option value="processing">Processing</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Payment Status
-              </label>
-              <select
-                name="payment_status"
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                defaultValue={editingOrder?.payment_status || "pending"}
-                required
-              >
-                <option value="pending">Pending</option>
-                <option value="paid">Paid</option>
-                <option value="failed">Failed</option>
-                <option value="refunded">Refunded</option>
-              </select>
-            </div>
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Total Amount
+              Status
             </label>
-            <input
-              name="total_amount"
-              type="number"
-              step="0.01"
+            <select
+              name="status"
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              defaultValue={editingOrder?.total_amount}
+              defaultValue={editingOrder?.status || "pending"}
               required
-            />
+            >
+              <option value="pending">Pending</option>
+              <option value="processing">Processing</option>
+              <option value="shipped">Shipped</option>
+              <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Subtotal
+              </label>
+              <input
+                name="subtotal"
+                type="number"
+                step="0.01"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                defaultValue={editingOrder?.subtotal}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Shipping Cost
+              </label>
+              <input
+                name="shipping_cost"
+                type="number"
+                step="0.01"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                defaultValue={editingOrder?.shipping_cost}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tax
+              </label>
+              <input
+                name="tax"
+                type="number"
+                step="0.01"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                defaultValue={editingOrder?.tax}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Total
+              </label>
+              <input
+                name="total"
+                type="number"
+                step="0.01"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                defaultValue={editingOrder?.total}
+                required
+              />
+            </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Notes
+              Payment Method
             </label>
-            <textarea
-              name="notes"
-              rows={3}
+            <select
+              name="payment_method"
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              defaultValue={editingOrder?.notes}
-            />
+              defaultValue={editingOrder?.payment_method}
+              required
+            >
+              <option value="credit_card">Credit Card</option>
+              <option value="paypal">PayPal</option>
+              <option value="bank_transfer">Bank Transfer</option>
+            </select>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-medium text-gray-900">Shipping Address</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Street
+                </label>
+                <input
+                  name="street"
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  defaultValue={editingOrder?.shipping_address?.street}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  City
+                </label>
+                <input
+                  name="city"
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  defaultValue={editingOrder?.shipping_address?.city}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  State
+                </label>
+                <input
+                  name="state"
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  defaultValue={editingOrder?.shipping_address?.state}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Postal Code
+                </label>
+                <input
+                  name="postal_code"
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  defaultValue={editingOrder?.shipping_address?.postal_code}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Country
+                </label>
+                <input
+                  name="country"
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  defaultValue={editingOrder?.shipping_address?.country}
+                  required
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">

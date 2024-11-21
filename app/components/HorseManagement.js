@@ -14,58 +14,69 @@ const HorseManagement = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchHorses = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        const { data, error } = await supabase
+          .from("horses")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setHorses(data || []);
+      } catch (error) {
+        toast.error("Error loading horses: " + error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchHorses();
-  }, []);
-
-  const fetchHorses = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("horses")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setHorses(data || []);
-    } catch (error) {
-      toast.error("Error loading horses: " + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [supabase]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
 
-    const horseData = {
-      name: formData.get("name"),
-      registered_name: formData.get("registered_name"),
-      breed: formData.get("breed"),
-      age: parseInt(formData.get("age")),
-      gender: formData.get("gender"),
-      color: formData.get("color"),
-      weight: formData.get("weight"),
-      height: formData.get("height"),
-      status: [formData.get("status")],
-      next_vet: formData.get("next_vet"),
-      next_shoe: formData.get("next_shoe"),
-      ueln: formData.get("ueln"),
-      identification_details: {
-        chip_number: formData.get("chip_number"),
-        passport_number: formData.get("passport_number"),
-      },
-      diet: {
-        feed_type: formData.get("feed_type"),
-        supplements: formData.get("supplements"),
-      },
-    };
-
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const horseData = {
+        user_id: user.id,
+        name: formData.get("name"),
+        registered_name: formData.get("registered_name"),
+        breed: formData.get("breed"),
+        age: parseInt(formData.get("age")),
+        gender: formData.get("gender"),
+        color: formData.get("color"),
+        weight: formData.get("weight"),
+        height: formData.get("height"),
+        status: [formData.get("status")],
+        next_vet: formData.get("next_vet") || null,
+        next_shoe: formData.get("next_shoe") || null,
+        ueln: formData.get("ueln"),
+        identification_details: {
+          chip_number: formData.get("chip_number"),
+          passport_number: formData.get("passport_number"),
+        },
+        diet: {
+          feed_type: formData.get("feed_type"),
+          supplements: formData.get("supplements"),
+        },
+        updated_by: user.id,
+      };
+
       if (editingHorse) {
         const { error } = await supabase
           .from("horses")
           .update(horseData)
-          .eq("id", editingHorse.id);
+          .eq("id", editingHorse.id)
+          .eq("user_id", user.id); // Security check
 
         if (error) throw error;
         toast.success("Horse updated successfully");
@@ -76,28 +87,43 @@ const HorseManagement = () => {
         toast.success("Horse created successfully");
       }
 
-      fetchHorses();
-      setIsModalOpen(false);
-      setEditingHorse(null);
+      // Refresh horses list
+      const { data, error } = await supabase
+        .from("horses")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setHorses(data);
     } catch (error) {
       toast.error(
-        editingHorse ? "Error updating horse" : "Error creating horse"
+        `Error ${editingHorse ? "updating" : "creating"} horse: ${
+          error.message
+        }`
       );
     }
+
+    setIsModalOpen(false);
+    setEditingHorse(null);
   };
 
   const handleDelete = async (horseId) => {
     if (!confirm("Are you sure you want to delete this horse?")) return;
 
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const { error } = await supabase
         .from("horses")
         .delete()
-        .eq("id", horseId);
+        .eq("id", horseId)
+        .eq("user_id", user.id); // Security check
 
       if (error) throw error;
       toast.success("Horse deleted successfully");
-      fetchHorses();
+      setHorses(horses.filter((horse) => horse.id !== horseId));
     } catch (error) {
       toast.error("Error deleting horse: " + error.message);
     }
@@ -441,6 +467,58 @@ const HorseManagement = () => {
               defaultValue={editingHorse?.ueln}
               maxLength={15}
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Chip Number
+              </label>
+              <input
+                name="chip_number"
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                defaultValue={editingHorse?.identification_details?.chip_number}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Passport Number
+              </label>
+              <input
+                name="passport_number"
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                defaultValue={
+                  editingHorse?.identification_details?.passport_number
+                }
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Feed Type
+              </label>
+              <input
+                name="feed_type"
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                defaultValue={editingHorse?.diet?.feed_type}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Supplements
+              </label>
+              <input
+                name="supplements"
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                defaultValue={editingHorse?.diet?.supplements}
+              />
+            </div>
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
