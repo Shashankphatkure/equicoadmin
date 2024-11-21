@@ -17,6 +17,11 @@ const OrderManagement = () => {
     fetchOrders();
   }, []);
 
+  const handleEdit = (order) => {
+    setEditingOrder(order);
+    setIsModalOpen(true);
+  };
+
   const fetchOrders = async () => {
     try {
       const {
@@ -57,12 +62,12 @@ const OrderManagement = () => {
           country: formData.get("country"),
         },
         shipping_method: {
-          carrier: formData.get("shipping_carrier"),
-          method: formData.get("shipping_method"),
-          tracking_number: formData.get("tracking_number"),
+          carrier: formData.get("shipping_carrier") || "standard",
+          method: formData.get("shipping_method") || "ground",
+          tracking_number: formData.get("tracking_number") || "",
         },
         payment_method: formData.get("payment_method"),
-        items: [], // This should be populated with actual order items
+        items: [], // You might want to add a separate form section for items
         subtotal: parseFloat(formData.get("subtotal")),
         shipping_cost: parseFloat(formData.get("shipping_cost")),
         tax: parseFloat(formData.get("tax")),
@@ -74,7 +79,7 @@ const OrderManagement = () => {
           .from("orders")
           .update(orderData)
           .eq("id", editingOrder.id)
-          .eq("user_id", user.id); // Security check
+          .eq("user_id", user.id);
 
         if (error) throw error;
         toast.success("Order updated successfully");
@@ -120,8 +125,11 @@ const OrderManagement = () => {
 
   const filteredOrders = orders.filter(
     (order) =>
-      order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.order_number?.toLowerCase().includes(searchTerm.toLowerCase())
+      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.shipping_address?.street
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      order.status?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusColor = (status) => {
@@ -145,6 +153,64 @@ const OrderManagement = () => {
       currency: "USD",
     }).format(price);
   };
+
+  const tableContent = (
+    <tbody className="divide-y divide-gray-100">
+      {filteredOrders.map((order) => (
+        <tr key={order.id} className="hover:bg-gray-50">
+          <td className="p-4">
+            <div className="text-sm font-medium text-gray-800">
+              #{order.id.slice(0, 8)}
+            </div>
+            <div className="text-xs text-gray-500">
+              {new Date(order.created_at).toLocaleDateString()}
+            </div>
+          </td>
+          <td className="p-4">
+            <div className="text-sm text-gray-800">
+              {order.shipping_address?.street}
+            </div>
+            <div className="text-xs text-gray-500">
+              {order.shipping_address?.city}, {order.shipping_address?.state}
+            </div>
+          </td>
+          <td className="p-4 text-sm font-medium text-gray-800">
+            {formatPrice(order.total || 0)}
+          </td>
+          <td className="p-4">
+            <span
+              className={`px-2 py-1 text-xs rounded-full ${getStatusColor(
+                order.status
+              )}`}
+            >
+              {order.status}
+            </span>
+          </td>
+          <td className="p-4">
+            <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
+              {order.payment_method}
+            </span>
+          </td>
+          <td className="p-4">
+            <div className="flex space-x-2">
+              <button
+                onClick={() => handleEdit(order)}
+                className="text-sm px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50 transition-colors"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => handleDelete(order.id)}
+                className="text-sm px-3 py-1.5 rounded border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  );
 
   return (
     <div className="p-6">
@@ -238,65 +304,7 @@ const OrderManagement = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="p-4">
-                    <div className="text-sm font-medium text-gray-800">
-                      #{order.order_number}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(order.created_at).toLocaleDateString()}
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="text-sm text-gray-800">
-                      {order.customer_name}
-                    </div>
-                    <div className="text-xs text-gray-500">{order.email}</div>
-                  </td>
-                  <td className="p-4 text-sm font-medium text-gray-800">
-                    {formatPrice(order.total_amount)}
-                  </td>
-                  <td className="p-4">
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full ${getStatusColor(
-                        order.status
-                      )}`}
-                    >
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full ${
-                        order.payment_status === "paid"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-yellow-100 text-yellow-800"
-                      }`}
-                    >
-                      {order.payment_status}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEdit(order)}
-                        className="text-sm px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50 transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(order.id)}
-                        className="text-sm px-3 py-1.5 rounded border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+            {tableContent}
           </table>
         </div>
       </div>
