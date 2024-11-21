@@ -216,14 +216,11 @@ const HorseManagement = () => {
           </button>
         </div>
 
-        {/* Table */}
+        {/* Updated Table */}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50 border-y border-gray-100">
-                <th className="text-left p-4 text-sm font-medium text-gray-600">
-                  ID
-                </th>
                 <th className="text-left p-4 text-sm font-medium text-gray-600">
                   Name
                 </th>
@@ -234,7 +231,7 @@ const HorseManagement = () => {
                   Age
                 </th>
                 <th className="text-left p-4 text-sm font-medium text-gray-600">
-                  Owner
+                  Gender
                 </th>
                 <th className="text-left p-4 text-sm font-medium text-gray-600">
                   Status
@@ -247,7 +244,6 @@ const HorseManagement = () => {
             <tbody className="divide-y divide-gray-100">
               {filteredHorses.map((horse) => (
                 <tr key={horse.id} className="hover:bg-gray-50">
-                  <td className="p-4 text-sm text-gray-600">{horse.id}</td>
                   <td className="p-4">
                     <div className="flex items-center">
                       <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium mr-3">
@@ -258,7 +254,7 @@ const HorseManagement = () => {
                           {horse.name}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {horse.breed}
+                          {horse.registered_name}
                         </div>
                       </div>
                     </div>
@@ -267,25 +263,33 @@ const HorseManagement = () => {
                   <td className="p-4 text-sm text-gray-600">
                     {horse.age} years
                   </td>
-                  <td className="p-4 text-sm text-gray-600">{horse.owner}</td>
+                  <td className="p-4 text-sm text-gray-600">{horse.gender}</td>
                   <td className="p-4">
                     <span
                       className={`px-2 py-1 text-xs rounded-full ${getStatusColor(
                         horse.status
                       )}`}
                     >
-                      {horse.status}
+                      {Array.isArray(horse.status)
+                        ? horse.status[0]
+                        : horse.status}
                     </span>
                   </td>
                   <td className="p-4">
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => handleEdit(horse)}
+                        onClick={() => {
+                          setEditingHorse(horse);
+                          setIsModalOpen(true);
+                        }}
                         className="text-sm px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50 transition-colors"
                       >
                         Edit
                       </button>
-                      <button className="text-sm px-3 py-1.5 rounded border border-red-300 text-red-600 hover:bg-red-50 transition-colors">
+                      <button
+                        onClick={() => handleDelete(horse.id)}
+                        className="text-sm px-3 py-1.5 rounded border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
+                      >
                         Delete
                       </button>
                     </div>
