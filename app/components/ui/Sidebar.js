@@ -49,7 +49,6 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     { id: "products", label: "Products", icon: ShoppingBagIcon },
     { id: "orders", label: "Orders", icon: ShoppingCartIcon },
     { id: "posts", label: "Posts", icon: DocumentTextIcon },
-    { id: "sellers", label: "Sellers", icon: UsersIcon },
     { id: "notifications", label: "Notifications", icon: BellIcon },
   ];
 

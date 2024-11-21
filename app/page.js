@@ -6,7 +6,6 @@ import UserManagement from "./components/UserManagement";
 import HorseManagement from "./components/HorseManagement";
 import EventManagement from "./components/EventManagement";
 import ProductManagement from "./components/ProductManagement";
-import SellerManagement from "./components/SellerManagement";
 import NotificationManagement from "./components/NotificationManagement";
 import OrderManagement from "./components/OrderManagement";
 import PostManagement from "./components/PostManagement";
@@ -79,8 +78,6 @@ const AdminDashboard = () => {
         return <PostManagement />;
       case "settings":
         return <SettingsPage />;
-      case "profile":
-        return <ProfilePage />;
       default:
         return null;
     }
